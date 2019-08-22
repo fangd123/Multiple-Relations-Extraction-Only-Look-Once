@@ -1,6 +1,7 @@
 import os
 import sys
 import json
+from tqdm import tqdm
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../bert")))
 import tokenization
 
@@ -159,49 +160,45 @@ class Model_data_preparation(object):
             elif file_set_type == "valid":
                 path_to_raw_data_file = "dev_data.json"
             else:
-                if self.Competition_Mode == True:
+                if self.Competition_Mode:
                     path_to_raw_data_file = "test1_data_postag.json"
                 else:
                     path_to_raw_data_file = "dev_data.json"
 
             with open(os.path.join(self.DATA_INPUT_DIR, path_to_raw_data_file), 'r', encoding='utf-8') as f:
                 count_numbers = 0
-                while True:
-                    line = f.readline()
-                    if line:
-                        count_numbers += 1
-                        a_row_raw_data = json.loads(line)
-                        if (not self.Competition_Mode) or file_set_type in ["train", "valid"]:
-                            spo_list = a_row_raw_data["spo_list"]
-                        else:
-                            spo_list = []
-                        text = a_row_raw_data["text"]
-                        text_tokened = self.bert_tokenizer.tokenize(text)
-                        text_tokened_not_UNK = self.bert_tokenizer.tokenize_not_UNK(text)
-                        if file_set_type in ["train", "valid"] or (not self.Competition_Mode):
-                            labeling_list, predicate_value_list, predicate_location_list, tokener_error_flag = \
-                                self.subject_object_labeling(spo_list=spo_list, text_tokened=text_tokened,
-                                                             bert_tokener_error_log_f=bert_tokener_error_log_f)
-                            if tokener_error_flag == False:
-                                labeling_out_f.write(" ".join(labeling_list) + "\n")
-                                predicate_value_out_f.write(str(predicate_value_list) + "\n")
-                                predicate_location_out_f.write(str(predicate_location_list) + "\n")
-                                text_f.write(text + "\n")
-                                token_in_f.write(" ".join(text_tokened) + "\n")
-                                token_in_not_UNK_f.write(" ".join(text_tokened_not_UNK) + "\n")
-                        else:
+                for line in tqdm(f):
+                    count_numbers += 1
+                    a_row_raw_data = json.loads(line)
+                    if (not self.Competition_Mode) or file_set_type in ["train", "valid"]:
+                        spo_list = a_row_raw_data["spo_list"]
+                    else:
+                        spo_list = []
+                    text = a_row_raw_data["text"]
+                    text_tokened = self.bert_tokenizer.tokenize(text)
+                    text_tokened_not_UNK = self.bert_tokenizer.tokenize_not_UNK(text)
+                    if file_set_type in ["train", "valid"] or (not self.Competition_Mode):
+                        labeling_list, predicate_value_list, predicate_location_list, tokener_error_flag = \
+                            self.subject_object_labeling(spo_list=spo_list, text_tokened=text_tokened,
+                                                         bert_tokener_error_log_f=bert_tokener_error_log_f)
+                        if tokener_error_flag == False:
+                            labeling_out_f.write(" ".join(labeling_list) + "\n")
+                            predicate_value_out_f.write(str(predicate_value_list) + "\n")
+                            predicate_location_out_f.write(str(predicate_location_list) + "\n")
                             text_f.write(text + "\n")
                             token_in_f.write(" ".join(text_tokened) + "\n")
                             token_in_not_UNK_f.write(" ".join(text_tokened_not_UNK) + "\n")
                     else:
-                        break
+                        text_f.write(text + "\n")
+                        token_in_f.write(" ".join(text_tokened) + "\n")
+                        token_in_not_UNK_f.write(" ".join(text_tokened_not_UNK) + "\n")
             print("all numbers", count_numbers)
             print("\n")
 
 if __name__ == "__main__":
     RAW_DATA_DIR = "raw_data"
     DATA_OUTPUT_DIR = "standard_format_data"
-    Competition_Mode = True
+    Competition_Mode = False
     Valid_Mode = False
     model_data = Model_data_preparation(
         RAW_DATA_INPUT_DIR=RAW_DATA_DIR, DATA_OUTPUT_DIR=DATA_OUTPUT_DIR, Competition_Mode=Competition_Mode, Valid_Model=Valid_Mode)
